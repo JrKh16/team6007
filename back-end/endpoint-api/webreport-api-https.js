@@ -1,134 +1,121 @@
 const hapi = require('@hapi/hapi');
-let express = require('express');
 const AuthBearer = require('hapi-auth-bearer-token');
-let fs = require('fs');
-let cors = require('cors');
-
+const fs = require('fs');
 const OnlineAgent = require('./respository/OnlineAgent');
 
-//-------------------------------------
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-const apiport = 8443
-
-var url = require('url');
-
-//init Express
-var app = express();
-//init Express Router
-var router = express.Router();
-//var port = process.env.PORT || 87;
-
-//REST route for GET /status
-router.get('/status', function (req, res) {
-    res.json({
-        status: 'App is running!'
-    });
-});
-
-//connect path to router
-app.use("/", router);
-
-
-//----------------------------------------------
+const apiport = 8443;
 
 const init = async () => {
-    //process.setMaxListeners(0);
-    require('events').defaultMaxListeners = 0;
-    process.setMaxListeners(0);
-
-    var fs = require('fs');
- 
-    var tls = {
+    const tls = {
         key: fs.readFileSync('server.key'),
         cert: fs.readFileSync('server.crt')
     };
 
-    //const server = Hapi.Server({
     const server = hapi.Server({
         port: apiport,
-        host: '192.168.1.108',
+        host: '192.168.56.107',
         tls: tls,
-        //routes: {
-        //    cors: true
-        //}
         routes: {
             cors: {
                 origin: ['*'],
-                headers: ["Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Accept", "Authorization", "Content-Type", "If-None-Match", "Accept-language"],
-                additionalHeaders: ["Access-Control-Allow-Headers: Origin, Content-Type, x-ms-request-id , Authorization"],
+                headers: ['Access-Control-Allow-Headers', 'Access-Control-Allow-Origin', 'Accept', 'Authorization', 'Content-Type', 'If-None-Match', 'Accept-language'],
+                additionalHeaders: ['Origin', 'x-ms-request-id'],
                 credentials: true
             }
         }
-
     });
 
     await server.register(require('@hapi/inert'));
-
     await server.register(AuthBearer);
 
     server.auth.strategy('simple', 'bearer-access-token', {
-        allowQueryToken: true,              // optional, false by default
+        allowQueryToken: true,
         validate: async (request, token, h) => {
-
-            // here is where you validate your token
-            // comparing with token from your database for example
             const isValid = token === '00D5D0000001aaZ!ARgAQGuQzp.mOv2jmhXkfIsjgywpCIh7.HZpc6vED1LCbc90DTaVDJwdNqbTW5r4uZicv8AFfkOE1ialqnR8UN5.wnAg3O7h';
-
             const credentials = { token };
             const artifacts = { test: 'info' };
-
             return { isValid, credentials, artifacts };
         }
     });
 
     server.auth.default('simple');
 
-    //-- Route ------
-
     server.route({
         method: 'GET',
         path: '/',
-        config: {
-            cors: {
-                origin: [
-                    '*'
-                ],
-                headers: ["Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Accept", "Authorization", "Content-Type", "If-None-Match", "Accept-language"],
-                additionalHeaders: ["Access-Control-Allow-Headers: Origin, Content-Type, x-ms-request-id , Authorization"],
-                credentials: true
-            }
-        },
         handler: async (request, h) => {
+            return 'Hello P!, Welcome to Endpoint Web Report API.';
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/getOnlineAgentByAgentCode',
+        handler: async (request, h) => {
+            const { agentcode } = request.query;
             try {
-                //console.log('CORS request.info:');
-                //console.log(request.info.cors);
-                return 'Hello P!, Welcome to Endpoint Web Report API.'
+                const responsedata = await OnlineAgent.OnlineAgentRepo.getOnlineAgentByAgentCode(agentcode);
+                return responsedata;
             } catch (err) {
-                console.dir(err)
+                console.error(err);
+                return h.response('An error occurred').code(500);
             }
         }
     });
 
-    //-------- Code continue here -------------------
-    //
-    //
-    //
-    //
-    //
-    //
-    //----------------------------------------------
+    server.route({
+        method: 'POST',
+        path: '/api/v1/postOnlineAgentStatus',
+        options: {
+            payload: {
+                parse: true,
+                allow: ['application/json', 'multipart/form-data'],
+                multipart: true
+            }
+        },
+        handler: async (request, h) => {
+            const { AgentCode, AgentName, IsLogin, AgentStatus } = request.payload;
+            try {
+                const responsedata = await OnlineAgent.OnlineAgentRepo.postOnlineAgentStatus(AgentCode, AgentName, IsLogin, AgentStatus);
+                return responsedata;
+            } catch (err) {
+                console.error(err);
+                return h.response('An error occurred').code(500);
+            }
+        }
+    });
+
+    server.route({
+        method: 'DELETE',
+        path: '/api/v1/deleteOnlineAgent',
+        handler: async (request, h) => {
+            const { agentcode } = request.query;
+            
+            if (!agentcode) {
+                return h.response('Agent code is required').code(400);
+            }
+    
+            try {
+                const responsedata = await OnlineAgent.OnlineAgentRepo.deleteOnlineAgent(agentcode);
+                if (responsedata) {
+                    return h.response('Agent deleted successfully').code(200);
+                } else {
+                    return h.response('Agent not found').code(404);
+                }
+            } catch (err) {
+                console.error(err);
+                return h.response('An error occurred').code(500);
+            }
+        }
+    });
 
     await server.start();
     console.log('Webreport API Server running on %s', server.info.uri);
 };
 
 process.on('unhandledRejection', (err) => {
-
-    console.log(err);
+    console.error(err);
     process.exit(1);
 });
 
 init();
-

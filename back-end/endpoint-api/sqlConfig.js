@@ -1,6 +1,6 @@
 var dbconfig = {
-    web_labDB: {
-        server: '192.168.1.108',
+    development: {
+        server: '192.168.56.107',
         database:'team6_web_labDB',
         user:'sa',
         password:'admin@123',
@@ -11,7 +11,22 @@ var dbconfig = {
             enableArithAbort: true,
             trustServerCertificate: true,
             trustedconnection:  true,
-            instancename:  '192.168.1.108'  // SQL Server instance name
+            instancename:  '192.168.56.107'  // SQL Server instance name
+        }
+    },
+    production: {
+        server: '192.168.56.107',
+        database:'team6_web_labDB',
+        user:'sa',
+        password:'admin@123',
+        port: 1433,
+        options:{
+            encript: true,
+            setTimeout: 12000,
+            enableArithAbort: true,
+            trustServerCertificate: true,
+            trustedconnection:  true,
+            instancename:  '192.168.56.107'  // SQL Server instance name
         }
     },
 
