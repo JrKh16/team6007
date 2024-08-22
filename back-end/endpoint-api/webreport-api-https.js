@@ -13,7 +13,7 @@ const init = async () => {
 
     const server = hapi.Server({
         port: apiport,
-        host: '192.168.56.107',
+        host: '0.0.0.0',
         tls: tls,
         routes: {
             cors: {
